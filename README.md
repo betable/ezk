@@ -1,0 +1,2 @@
+# ezk
+Enhanced Zookeeper Client
