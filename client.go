@@ -76,8 +76,15 @@ func NewClient(cfg ClientConfig) *Client {
 type Retry func(op, path string, f func() error)
 
 // Connect connects to a Zookeeper server.
-// Upon success it sets the z.WatchCh and returns nil.
+// Upon success it sets the z.WatchCh and
+// z.Conn and returns nil.
+// If an error is returned then z.WatchCh and
+// z.Conn will not be set. Connect() will
+// typically only be needed once, but can be
+// called again if need be.
 func (z *Client) Connect() error {
+	z.WatchCh = nil
+	z.Conn = nil
 	conn, ch, err := zk.Connect(z.Cfg.Servers, z.Cfg.SessionTimeout)
 	if err != nil {
 		return err
