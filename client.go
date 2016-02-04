@@ -16,6 +16,8 @@ type Client struct {
 	Conn *zk.Conn
 
 	// WatchCh will be nil until Connect returns without error.
+	// Watches that fire over the Zookeeper connection will be
+	// received on WatchCh.
 	WatchCh <-chan zk.Event
 }
 
