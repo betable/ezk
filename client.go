@@ -112,6 +112,12 @@ type ClientConfig struct {
 // If cfg.Acl is length 0 then zk.WorldACL(zk.PermAll)
 // will be used.
 func NewClient(cfg ClientConfig) *Client {
+
+	// handle "" or "/prod" Chroot gracefully.
+	if !strings.HasSuffix(cfg.Chroot, "/") {
+		cfg.Chroot += "/"
+	}
+
 	if cfg.Retry == nil {
 		cfg.Retry = DefaultRetry
 	}
@@ -163,7 +169,7 @@ func (z *Client) Close() {
 }
 
 // Exists checks if a znode exists.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Exists(path string) (ok bool, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("exists", path, func() error {
@@ -174,7 +180,7 @@ func (z *Client) Exists(path string) (ok bool, s *zk.Stat, err error) {
 }
 
 // ExistsW returns if a znode exists and sets a watch.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) ExistsW(path string) (ok bool, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("existsw", path, func() error {
@@ -187,7 +193,7 @@ func (z *Client) ExistsW(path string) (ok bool, s *zk.Stat, ch <-chan zk.Event, 
 // Create creates a znode with a content. If
 // acl is nil then the z.Cfg.Acl set will be
 // applied to the new znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Create(path string, data []byte, flags int32, acl []zk.ACL) (s string, err error) {
 	path = z.fullpath(path)
 	if len(acl) == 0 && len(z.Cfg.Acl) != 0 {
@@ -201,7 +207,7 @@ func (z *Client) Create(path string, data []byte, flags int32, acl []zk.ACL) (s 
 }
 
 // Delete deletes a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Delete(path string, version int32) (err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("delete", path, func() error {
@@ -212,7 +218,7 @@ func (z *Client) Delete(path string, version int32) (err error) {
 }
 
 // Get returns the contents of a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("get", path, func() error {
@@ -223,7 +229,7 @@ func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
 }
 
 // GetW returns the contents of a znode and sets a watch.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("getw", path, func() error {
@@ -234,7 +240,7 @@ func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, er
 }
 
 // Set writes content in an existent znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("set", path, func() error {
@@ -246,7 +252,7 @@ func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err e
 }
 
 // Children returns the children of a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Children(path string) (c []string, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("children", path, func() error {
@@ -257,7 +263,7 @@ func (z *Client) Children(path string) (c []string, s *zk.Stat, err error) {
 }
 
 // ChildrenW returns the children of a znode and sets a watch.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) ChildrenW(path string) (c []string, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("childrenw", path, func() error {
@@ -268,7 +274,7 @@ func (z *Client) ChildrenW(path string) (c []string, s *zk.Stat, ch <-chan zk.Ev
 }
 
 // Sync performs a sync from the master in the Zookeeper server.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Sync(path string) (s string, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("sync", path, func() error {
@@ -279,7 +285,7 @@ func (z *Client) Sync(path string) (s string, err error) {
 }
 
 // GetACL returns the ACL for a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) GetACL(path string) (a []zk.ACL, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("getacl", path, func() error {
@@ -290,7 +296,7 @@ func (z *Client) GetACL(path string) (a []zk.ACL, s *zk.Stat, err error) {
 }
 
 // SetACL sets a ACL to a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) SetACL(path string, acl []zk.ACL, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("setacl", path, func() error {
@@ -301,14 +307,14 @@ func (z *Client) SetACL(path string, acl []zk.ACL, version int32) (s *zk.Stat, e
 }
 
 // CreateProtectedEphemeralSequential creates a sequential ephemeral znode.
-// z.Cfg.Chroot will be prepended to path. The call will be NOT be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be NOT be retried.
 func (z *Client) CreateProtectedEphemeralSequential(path string, data []byte, acl []zk.ACL) (string, error) {
 	path = z.fullpath(path)
 	return z.Conn.CreateProtectedEphemeralSequential(path, data, acl)
 }
 
 // CreateDir is a helper method that creates and empty znode if it does not exists.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 	path = z.fullpath(path)
 	ok, _, err := z.Exists(path)
@@ -327,7 +333,7 @@ func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 }
 
 // SafeSet is a helper method that writes a znode creating it first if it does not exists. It will sync the Zookeeper before checking if the node exists.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) (*zk.Stat, error) {
 	_, err := z.Sync(path)
 	if err != nil {
@@ -352,7 +358,7 @@ func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) 
 }
 
 // SafeGet is a helper method that syncs Zookeeper and return the content of a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) SafeGet(path string) ([]byte, *zk.Stat, error) {
 	_, err := z.Sync(path)
 	if err != nil {
@@ -362,13 +368,12 @@ func (z *Client) SafeGet(path string) ([]byte, *zk.Stat, error) {
 	return z.Get(path)
 }
 
+// If path is absolute, fullpath leaves it unchanged. Otherwise,
 // fullpath returns the path with the chroot prepended.
 func (z *Client) fullpath(path string) string {
-	//	if z.Cfg.Chroot != "" && !strings.HasPrefix(path, z.Cfg.Chroot) {
-	//    return z.Cfg.Chroot + path
-	//	}
-	//	return path
-
+	if IsAbsolutePath(path) {
+		return path
+	}
 	return z.Cfg.Chroot + path
 }
 
@@ -385,7 +390,7 @@ func DefaultRetry(op, path string, f func() error) {
 
 // A convenience version of Delete, DeleteNode deletes a znode,
 // using version -1 to delete any version.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) DeleteNode(path string) error {
 	return z.Delete(path, -1)
 }
@@ -393,7 +398,7 @@ func (z *Client) DeleteNode(path string) error {
 // A convenience version of Create, CreateNode supplies
 // empty data, 0 flags, and the default z.Cfg.Acl list
 // to a z.Create() call.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) CreateNode(path string) error {
 	_, err := z.Create(path, []byte{}, 0, z.Cfg.Acl)
 	return err
