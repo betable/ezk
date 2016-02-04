@@ -302,9 +302,8 @@ func (z *Client) fullpath(path string) string {
 	return z.Cfg.Chroot + path
 }
 
-// The DefaultRetry function will retry four
-// times if the first Zookeeper call fails, after sleeping
-//  0ms, 100ms, 500ms and 1500ms.
+// The DefaultRetry function will retry four times if the
+// first Zookeeper call fails, after sleeping in turn: 0ms, 100ms, 500ms and 1500ms.
 func DefaultRetry(op, path string, f func() error) {
 	retry.NewExecutor().
 		WithRetries(4).
