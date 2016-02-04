@@ -49,7 +49,7 @@ type Event struct {
 }
 
   Note [1] that this Path is absolute, it includes the Chroot
-  prefix. Users should callRemoveChroot() function as needed
+  prefix. Users should call RemoveChroot() function as needed
   before using the Event.Path field.
 
 */
