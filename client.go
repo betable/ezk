@@ -85,7 +85,8 @@ func (z *Client) Close() {
 	z.Conn.Close()
 }
 
-// Exists checks if a znode exists
+// Exists checks if a znode exists.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) Exists(path string) (ok bool, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("exists", path, func() error {
