@@ -30,11 +30,27 @@ type Client struct {
 // ClientConfig is used to configure a Client; pass
 // it to NewClient().
 type ClientConfig struct {
-	Chroot         string
-	Acl            []zk.ACL
-	Servers        []string
+
+	// The Chroot directory will be prepended to all paths
+	Chroot string
+
+	// The set of ACLs used by defeault when
+	// calling Client.Create(), if the formal
+	// parameter acl in Create() is length 0.
+	Acl []zk.ACL
+
+	// The URLs of the zookeepers to attempt to connect to.
+	Servers []string
+
+	// SessionTimeout defaults to 10 seconds if not
+	// otherwise set.
 	SessionTimeout time.Duration
-	Retry          Retry
+
+	// The retry function determines how many times
+	// and how often we retry our Zookeeper operations
+	// before failing. See DefaultRetry() which is
+	// used if this is not otherwise set.
+	Retry Retry
 }
 
 // NewClient creates a new ezk.Client.
@@ -99,7 +115,9 @@ func (z *Client) ExistsW(path string) (ok bool, s *zk.Stat, ch <-chan zk.Event, 
 	return ok, s, ch, err
 }
 
-// Create creates a znode with a content.
+// Create creates a znode with a content. If
+// acl is nil then the z.Cfg.Acl set will be
+// applied to the new znode.
 func (z *Client) Create(path string, data []byte, flags int32, acl []zk.ACL) (s string, err error) {
 	path = z.fullpath(path)
 	if len(acl) == 0 && len(z.Cfg.Acl) != 0 {
