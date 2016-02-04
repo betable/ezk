@@ -314,23 +314,35 @@ func (z *Client) CreateProtectedEphemeralSequential(path string, data []byte, ac
 	return z.Conn.CreateProtectedEphemeralSequential(path, data, acl)
 }
 
-// CreateDir is a helper method that creates and empty znode if it does not exists.
-// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
+// CreateDir is a helper method that creates a path of empty
+// znodes if they do not exist. It acts like os.MkdirAll or
+// mkdir -p in that it will create a series of nested directories
+// if the path supplies them. It won't fail if some or all of
+// these already exist. z.Cfg.Chroot will be prepended to a
+// relative path. The call will be retried.
 func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 	path = z.fullpath(path)
-	ok, _, err := z.Exists(path)
-	if err != nil {
-		return err
+	if path == "" || path == "/" {
+		return nil
 	}
 
-	if !ok {
-		_, err = z.Create(path, []byte{}, 0, acl)
-		if err == zk.ErrNodeExists {
-			return nil
+	next := ""
+	elem := strings.Split(ChompSlash(path[1:]), "/")
+	if len(acl) == 0 {
+		acl = z.Cfg.Acl
+	}
+	var err error
+	for _, e := range elem {
+		next += "/" + e
+		fmt.Printf("\n  CreateDir is creating '%s'\n", next)
+		_, err = z.Create(next, []byte{}, 0, acl)
+		if err == zk.ErrNodeExists || err == nil {
+			continue
+		} else {
+			return fmt.Errorf("ezk.Client.CreateDir() error creating '%s': '%s'", next, err)
 		}
 	}
-
-	return err
+	return nil
 }
 
 // SafeSet is a helper method that writes a znode creating it first if it does not exists. It will sync the Zookeeper before checking if the node exists.
@@ -444,4 +456,13 @@ func IsAbsolutePath(path string) bool {
 		return true
 	}
 	return false
+}
+
+// ChompSlash removes any trailing single '/' from path. It
+// only checks the very last character.
+func ChompSlash(path string) string {
+	if strings.HasSuffix(path, "/") {
+		return path[:len(path)-1]
+	}
+	return path
 }
