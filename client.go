@@ -1,7 +1,6 @@
 package ezk
 
 import (
-	"fmt"
 	"github.com/betable/retry"
 	"github.com/samuel/go-zookeeper/zk"
 	"time"
@@ -60,7 +59,6 @@ type ClientConfig struct {
 // function will be used.
 func NewClient(cfg ClientConfig) *Client {
 	if cfg.Retry == nil {
-		fmt.Printf("cfg.Retry was nil, setting DefaultRetry\n")
 		cfg.Retry = DefaultRetry
 	}
 	if cfg.SessionTimeout == 0 {
@@ -77,8 +75,7 @@ func NewClient(cfg ClientConfig) *Client {
 type Retry func(op, path string, f func() error)
 
 // Connect connects to a Zookeeper server.
-//
-// Options can be passed to set a chroot or a default ACL.
+// Upon success it sets the z.WatchCh, closes z.Ready, and returns nil.
 func (z *Client) Connect() error {
 	conn, ch, err := zk.Connect(z.Cfg.Servers, z.Cfg.SessionTimeout)
 	if err != nil {
@@ -106,6 +103,7 @@ func (z *Client) Exists(path string) (ok bool, s *zk.Stat, err error) {
 }
 
 // ExistsW returns if a znode exists and sets a watch.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) ExistsW(path string) (ok bool, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("existsw", path, func() error {
@@ -118,6 +116,7 @@ func (z *Client) ExistsW(path string) (ok bool, s *zk.Stat, ch <-chan zk.Event, 
 // Create creates a znode with a content. If
 // acl is nil then the z.Cfg.Acl set will be
 // applied to the new znode.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) Create(path string, data []byte, flags int32, acl []zk.ACL) (s string, err error) {
 	path = z.fullpath(path)
 	if len(acl) == 0 && len(z.Cfg.Acl) != 0 {
@@ -131,6 +130,7 @@ func (z *Client) Create(path string, data []byte, flags int32, acl []zk.ACL) (s 
 }
 
 // Delete deletes a znode.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) Delete(path string, version int32) (err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("delete", path, func() error {
@@ -140,7 +140,8 @@ func (z *Client) Delete(path string, version int32) (err error) {
 	return err
 }
 
-// Get returns the contents of a znode
+// Get returns the contents of a znode.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("get", path, func() error {
@@ -150,7 +151,8 @@ func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
 	return d, s, err
 }
 
-// GetW returns the contents of a znode and sets a watch
+// GetW returns the contents of a znode and sets a watch.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("getw", path, func() error {
@@ -161,6 +163,7 @@ func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, er
 }
 
 // Set writes content in an existent znode.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("set", path, func() error {
@@ -171,6 +174,7 @@ func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err e
 }
 
 // Children returns the children of a znode.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) Children(path string) (c []string, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("children", path, func() error {
@@ -181,6 +185,7 @@ func (z *Client) Children(path string) (c []string, s *zk.Stat, err error) {
 }
 
 // ChildrenW returns the children of a znode and sets a watch.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) ChildrenW(path string) (c []string, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("childrenw", path, func() error {
@@ -191,6 +196,7 @@ func (z *Client) ChildrenW(path string) (c []string, s *zk.Stat, ch <-chan zk.Ev
 }
 
 // Sync performs a sync from the master in the Zookeeper server.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) Sync(path string) (s string, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("sync", path, func() error {
@@ -201,6 +207,7 @@ func (z *Client) Sync(path string) (s string, err error) {
 }
 
 // GetACL returns the ACL for a znode.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) GetACL(path string) (a []zk.ACL, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("getacl", path, func() error {
@@ -211,6 +218,7 @@ func (z *Client) GetACL(path string) (a []zk.ACL, s *zk.Stat, err error) {
 }
 
 // SetACL sets a ACL to a znode.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) SetACL(path string, acl []zk.ACL, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("setacl", path, func() error {
@@ -221,12 +229,14 @@ func (z *Client) SetACL(path string, acl []zk.ACL, version int32) (s *zk.Stat, e
 }
 
 // CreateProtectedEphemeralSequential creates a sequential ephemeral znode.
+// z.Cfg.Chroot will be prepended to path. The call will be NOT be retried.
 func (z *Client) CreateProtectedEphemeralSequential(path string, data []byte, acl []zk.ACL) (string, error) {
 	path = z.fullpath(path)
 	return z.Conn.CreateProtectedEphemeralSequential(path, data, acl)
 }
 
 // CreateDir is a helper method that creates and empty znode if it does not exists.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 	path = z.fullpath(path)
 	ok, _, err := z.Exists(path)
@@ -245,6 +255,7 @@ func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 }
 
 // SafeSet is a helper method that writes a znode creating it first if it does not exists.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) (*zk.Stat, error) {
 	path = z.fullpath(path)
 	_, err := z.Sync(path)
@@ -270,6 +281,7 @@ func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) 
 }
 
 // SafeGet is a helper method that syncs Zookeeper and return the content of a znode.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) SafeGet(path string) ([]byte, *zk.Stat, error) {
 	path = z.fullpath(path)
 	_, err := z.Sync(path)
@@ -280,8 +292,7 @@ func (z *Client) SafeGet(path string) ([]byte, *zk.Stat, error) {
 	return z.Get(path)
 }
 
-// fullpath returns the path with the chroot prepended. It can cause issues
-// if the znode path starts like /foo/foo/...
+// fullpath returns the path with the chroot prepended.
 func (z *Client) fullpath(path string) string {
 	//	if z.Cfg.Chroot != "" && !strings.HasPrefix(path, z.Cfg.Chroot) {
 	//    return z.Cfg.Chroot + path
