@@ -16,9 +16,9 @@ func Test001ClientRetryGetsDefault(t *testing.T) {
 	})
 }
 
-// In the Connect example, the goal is to set
+// In the example code, the goal is to set
 // the value newURL into the node /chroot/service-name/config/server-url-list
-func ExampleConnect() {
+func Example() {
 	newURL := "http://my-new-url.org:343/hello/enhanced-zookeeper-client"
 
 	base := "/chroot"
