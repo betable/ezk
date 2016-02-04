@@ -335,11 +335,10 @@ func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 	for _, e := range elem {
 		next += "/" + e
 		_, err = z.Create(next, []byte{}, 0, acl)
-		//fmt.Printf("\n  CreateDir is creating '%s'. got err = '%v'\n", next, err)
 		if err == zk.ErrNodeExists || err == nil {
 			continue
 		} else {
-			return fmt.Errorf("ezk.Client.CreateDir() error creating '%s': '%s'", next, err)
+			return err
 		}
 	}
 	return nil
