@@ -47,7 +47,7 @@ type ClientConfig struct {
 	// otherwise set.
 	SessionTimeout time.Duration
 
-	// The retry function determines how many times
+	// The Retry function determines how many times
 	// and how often we retry our Zookeeper operations
 	// before failing. See DefaultRetry() which is
 	// used if this is not otherwise set.
