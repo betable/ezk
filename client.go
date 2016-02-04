@@ -88,6 +88,10 @@ type Retry func(op, path string, f func() error)
 // z.Conn will not be set. Connect() will
 // typically only be needed once, but can be
 // called again if need be.
+// Upon successful connection to Zookeeper,
+// we will attempt to create the z.Cfg.Chroot node.
+// No error will be returned if this attempt
+// fails, as commonly it may already exist.
 func (z *Client) Connect() error {
 	z.WatchCh = nil
 	z.Conn = nil
