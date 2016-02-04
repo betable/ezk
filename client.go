@@ -4,6 +4,53 @@ connection and underlying operations from
 https://github.com/samuel/go-zookeeper/zk
 in conjunction with automatic retry of operations via the
 https://github.com/betable/retry library.
+
+Our (enforced) zookeeper path convention for the
+ClientConfig.Chroot string allows us to distinguish
+between chroot-ed paths and non-chroot paths as follows:
+
+ * the Chroot prefix must always start and end with a forward slash.
+   The Chroot prefix always contains exactly two '/'
+   characters (it can only consist of a single znode).
+
+   For example: "/prod/", "/staging/", and "/devtest/" are all
+   legal Chroot strings. Counter-examples: "/prod" is not
+   a legal Chroot value, nor is "prod/", nor is "prod".
+   User code can distinguish Chroot prefixes by checking
+   whether the first byte of the string is '/' or not.
+
+* All paths that are intended to be relative to the Chroot
+  prefix must *not* start with a forward slash and must
+  not end with a forward slash; they are like relative paths in Unix.
+
+  So legal examples of relative paths: "myservice/config/my-servers",
+  "piper", or "timeseries", or "timeseris/config". The
+  requirement to not end in a '/' is enforced on the
+  Zookeeper server side.
+
+* The ezk library will form the full path (spoken on the wire to
+  the Zookeeper) by a simple concatenation of Chroot + relative path.
+
+* The helper function RemoveChroot(path) will detect and
+  automatically remove any chroot prefix, and return a
+  relative path. It will leave untouched any already
+  relative paths.
+
+* Important: when receiving watch events on channels from the
+  github.com/samuel/go-zookeeper/zk library, they are of type
+
+type Event struct {
+	Type   EventType
+	State  State
+	Path   string // For non-session events, the (absolute, Chroot-prefixed) path of the watched node. [1]
+	Err    error
+	Server string // For connection events
+}
+
+  Note [1] that this Path is absolute, it includes the Chroot
+  prefix. Users should callRemoveChroot() function as needed
+  before using the Event.Path field.
+
 */
 package ezk
 
@@ -11,6 +58,7 @@ import (
 	"fmt"
 	"github.com/betable/retry"
 	"github.com/samuel/go-zookeeper/zk"
+	"strings"
 	"time"
 )
 
@@ -348,4 +396,45 @@ func (z *Client) DeleteNode(path string) error {
 func (z *Client) CreateNode(path string) error {
 	_, err := z.Create(path, []byte{}, 0, z.Cfg.Acl)
 	return err
+}
+
+// RemoveChroot(path) will detect and
+// automatically remove any chroot prefix, and return a
+// relative path.
+//
+// Examples: "/mybase/myservice/config" -> "myservice/config"
+//           "/myroot/alist" -> "alist"
+//           "/hello/" -> ""
+//           "/poorlyFormed" -> ""  ## properly should have a trailling slash
+//           "relative/path/unchanged" -> "relative/path/unchanged"
+//
+// RemoveChroot will leave untouched any already
+// relative paths. Note that this returned relative path
+// may be the empty string "" if path consists of one element
+// "/chroot/" alone, for example.
+func RemoveChroot(path string) string {
+	if !IsAbsolutePath(path) {
+		return path
+	}
+
+	// find the second '/', but don't freak if its not there.
+	n := strings.Index(path[1:], "/")
+	if n == -1 {
+		// not found
+		return ""
+	}
+	return path[2+n:]
+}
+
+// IsAbsolutePath() checks to see if the path
+// starts with a Chroot element by checking
+// if the first byte is a '/' or not.
+func IsAbsolutePath(path string) bool {
+	if len(path) == 0 {
+		return false
+	}
+	if path[0] == '/' {
+		return true
+	}
+	return false
 }
