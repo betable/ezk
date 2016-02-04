@@ -15,15 +15,8 @@ type Client struct {
 	// The underlying github.com/samuel/go-zookeeper/zk connection.
 	Conn *zk.Conn
 
-	// WatchCh will be nil until Ready is indicated
-	// by being closed.
+	// WatchCh will be nil until Connect returns without error.
 	WatchCh <-chan zk.Event
-
-	// Ready is closed when the Zookeeper connection
-	// is first made. After that you WatchCh will
-	// no longer be nil and Watch events may
-	// be received.
-	Ready chan bool
 }
 
 // ClientConfig is used to configure a Client; pass
@@ -65,8 +58,7 @@ func NewClient(cfg ClientConfig) *Client {
 		cfg.SessionTimeout = 10 * time.Second
 	}
 	cli := &Client{
-		Cfg:   cfg,
-		Ready: make(chan bool),
+		Cfg: cfg,
 	}
 	return cli
 }
@@ -75,7 +67,7 @@ func NewClient(cfg ClientConfig) *Client {
 type Retry func(op, path string, f func() error)
 
 // Connect connects to a Zookeeper server.
-// Upon success it sets the z.WatchCh, closes z.Ready, and returns nil.
+// Upon success it sets the z.WatchCh and returns nil.
 func (z *Client) Connect() error {
 	conn, ch, err := zk.Connect(z.Cfg.Servers, z.Cfg.SessionTimeout)
 	if err != nil {
@@ -83,7 +75,6 @@ func (z *Client) Connect() error {
 	}
 	z.Conn = conn
 	z.WatchCh = ch
-	close(z.Ready)
 	return nil
 }
 
