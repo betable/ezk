@@ -18,6 +18,8 @@ between chroot-ed paths and non-chroot paths as follows:
    a legal Chroot value, nor is "prod/", nor is "prod".
    User code can distinguish Chroot prefixes by checking
    whether the first byte of the string is '/' or not.
+   See the IsAbsolutePath() and RemoveChroot()
+   helper functions.
 
 * All paths that are intended to be relative to the Chroot
   prefix must *not* start with a forward slash and must
@@ -25,16 +27,15 @@ between chroot-ed paths and non-chroot paths as follows:
 
   So legal examples of relative paths: "myservice/config/my-servers",
   "piper", or "timeseries", or "timeseris/config". The
-  requirement to not end in a '/' is enforced on the
+  requirement forbidding the trailing '/' is enforced on the
   Zookeeper server side.
 
 * The ezk library will form the full path (spoken on the wire to
   the Zookeeper) by a simple concatenation of Chroot + relative path.
 
 * The helper function RemoveChroot(path) will detect and
-  automatically remove any chroot prefix, and return a
-  relative path. It will leave untouched any already
-  relative paths.
+  automatically remove any chroot prefix from path, and returns a
+  relative path. It will leave untouched already relative paths.
 
 * Important: when receiving watch events on channels from the
   github.com/samuel/go-zookeeper/zk library, they are of type
