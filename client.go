@@ -334,8 +334,8 @@ func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 	var err error
 	for _, e := range elem {
 		next += "/" + e
-		fmt.Printf("\n  CreateDir is creating '%s'\n", next)
 		_, err = z.Create(next, []byte{}, 0, acl)
+		//fmt.Printf("\n  CreateDir is creating '%s'. got err = '%v'\n", next, err)
 		if err == zk.ErrNodeExists || err == nil {
 			continue
 		} else {
