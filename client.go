@@ -262,7 +262,7 @@ func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 	return err
 }
 
-// SafeSet is a helper method that writes a znode creating it first if it does not exists.
+// SafeSet is a helper method that writes a znode creating it first if it does not exists. It will sync the Zookeeper before checking if the node exists.
 // z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) (*zk.Stat, error) {
 	path = z.fullpath(path)
