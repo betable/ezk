@@ -50,7 +50,7 @@ type ClientConfig struct {
 // NewClient creates a new ezk.Client.
 // If the cfg.SessionTimout is set to 0
 // a default value of 10 seconds will be used.
-// If cfg.Retry is nil then the zk.defaultRetry
+// If cfg.Retry is nil then the DefaultRetry
 // function will be used.
 func NewClient(cfg ClientConfig) *Client {
 	if cfg.Retry == nil {
