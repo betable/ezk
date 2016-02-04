@@ -4,6 +4,55 @@ connection and underlying operations from
 https://github.com/samuel/go-zookeeper/zk
 in conjunction with automatic retry of operations via the
 https://github.com/betable/retry library.
+
+Our (enforced) zookeeper path convention for the
+ClientConfig.Chroot string allows us to distinguish
+between chroot-ed paths and non-chroot paths as follows:
+
+ * the Chroot prefix must always start and end with a forward slash.
+   A single "/" alone is a valid Chroot prefix; otherwise
+   the Chroot prefix always contains exactly two '/'
+   characters (it can only consist of a single znode).
+
+   For example: "/prod/", "/staging/", and "/devtest/" are all
+   legal Chroot strings. Counter-examples: "/prod" is not
+   a legal Chroot value, nor is "prod/", nor is "prod".
+   User code can distinguish Chroot prefixes by checking
+   whether the first byte of the string is '/' or not.
+   See the IsAbsolutePath() and RemoveChroot()
+   helper functions.
+
+* All paths that are intended to be relative to the Chroot
+  prefix must *not* start with a forward slash and must
+  not end with a forward slash; they are like relative paths in Unix.
+
+  So legal examples of relative paths: "myservice/config/my-servers",
+  "piper", or "timeseries", or "timeseris/config". The
+  requirement forbidding the trailing '/' is enforced on the
+  Zookeeper server side.
+
+* The ezk library will form the full path (spoken on the wire to
+  the Zookeeper) by a simple concatenation of Chroot + relative path.
+
+* The helper function RemoveChroot(path) will detect and
+  automatically remove any chroot prefix from path, and returns a
+  relative path. It will leave untouched already relative paths.
+
+* Important: when receiving watch events on channels from the
+  github.com/samuel/go-zookeeper/zk library, they are of type
+
+type Event struct {
+	Type   EventType
+	State  State
+	Path   string // For non-session events, the (absolute, Chroot-prefixed) path of the watched node. [1]
+	Err    error
+	Server string // For connection events
+}
+
+  Note [1] that this Path is absolute, it includes the Chroot
+  prefix. Users should call RemoveChroot() function as needed
+  before using the Event.Path field.
+
 */
 package ezk
 
@@ -11,6 +60,7 @@ import (
 	"fmt"
 	"github.com/betable/retry"
 	"github.com/samuel/go-zookeeper/zk"
+	"strings"
 	"time"
 )
 
@@ -63,6 +113,12 @@ type ClientConfig struct {
 // If cfg.Acl is length 0 then zk.WorldACL(zk.PermAll)
 // will be used.
 func NewClient(cfg ClientConfig) *Client {
+
+	// handle "" or "/prod" Chroot gracefully.
+	if !strings.HasSuffix(cfg.Chroot, "/") {
+		cfg.Chroot += "/"
+	}
+
 	if cfg.Retry == nil {
 		cfg.Retry = DefaultRetry
 	}
@@ -114,7 +170,7 @@ func (z *Client) Close() {
 }
 
 // Exists checks if a znode exists.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Exists(path string) (ok bool, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("exists", path, func() error {
@@ -125,7 +181,7 @@ func (z *Client) Exists(path string) (ok bool, s *zk.Stat, err error) {
 }
 
 // ExistsW returns if a znode exists and sets a watch.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) ExistsW(path string) (ok bool, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("existsw", path, func() error {
@@ -138,7 +194,7 @@ func (z *Client) ExistsW(path string) (ok bool, s *zk.Stat, ch <-chan zk.Event, 
 // Create creates a znode with a content. If
 // acl is nil then the z.Cfg.Acl set will be
 // applied to the new znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Create(path string, data []byte, flags int32, acl []zk.ACL) (s string, err error) {
 	path = z.fullpath(path)
 	if len(acl) == 0 && len(z.Cfg.Acl) != 0 {
@@ -152,7 +208,7 @@ func (z *Client) Create(path string, data []byte, flags int32, acl []zk.ACL) (s 
 }
 
 // Delete deletes a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Delete(path string, version int32) (err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("delete", path, func() error {
@@ -163,7 +219,7 @@ func (z *Client) Delete(path string, version int32) (err error) {
 }
 
 // Get returns the contents of a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("get", path, func() error {
@@ -174,7 +230,7 @@ func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
 }
 
 // GetW returns the contents of a znode and sets a watch.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("getw", path, func() error {
@@ -185,7 +241,7 @@ func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, er
 }
 
 // Set writes content in an existent znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("set", path, func() error {
@@ -197,7 +253,7 @@ func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err e
 }
 
 // Children returns the children of a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Children(path string) (c []string, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("children", path, func() error {
@@ -208,7 +264,7 @@ func (z *Client) Children(path string) (c []string, s *zk.Stat, err error) {
 }
 
 // ChildrenW returns the children of a znode and sets a watch.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) ChildrenW(path string) (c []string, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("childrenw", path, func() error {
@@ -219,7 +275,7 @@ func (z *Client) ChildrenW(path string) (c []string, s *zk.Stat, ch <-chan zk.Ev
 }
 
 // Sync performs a sync from the master in the Zookeeper server.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Sync(path string) (s string, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("sync", path, func() error {
@@ -230,7 +286,7 @@ func (z *Client) Sync(path string) (s string, err error) {
 }
 
 // GetACL returns the ACL for a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) GetACL(path string) (a []zk.ACL, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("getacl", path, func() error {
@@ -241,7 +297,7 @@ func (z *Client) GetACL(path string) (a []zk.ACL, s *zk.Stat, err error) {
 }
 
 // SetACL sets a ACL to a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) SetACL(path string, acl []zk.ACL, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("setacl", path, func() error {
@@ -252,14 +308,14 @@ func (z *Client) SetACL(path string, acl []zk.ACL, version int32) (s *zk.Stat, e
 }
 
 // CreateProtectedEphemeralSequential creates a sequential ephemeral znode.
-// z.Cfg.Chroot will be prepended to path. The call will be NOT be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be NOT be retried.
 func (z *Client) CreateProtectedEphemeralSequential(path string, data []byte, acl []zk.ACL) (string, error) {
 	path = z.fullpath(path)
 	return z.Conn.CreateProtectedEphemeralSequential(path, data, acl)
 }
 
 // CreateDir is a helper method that creates and empty znode if it does not exists.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 	path = z.fullpath(path)
 	ok, _, err := z.Exists(path)
@@ -278,7 +334,7 @@ func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 }
 
 // SafeSet is a helper method that writes a znode creating it first if it does not exists. It will sync the Zookeeper before checking if the node exists.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) (*zk.Stat, error) {
 	_, err := z.Sync(path)
 	if err != nil {
@@ -303,7 +359,7 @@ func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) 
 }
 
 // SafeGet is a helper method that syncs Zookeeper and return the content of a znode.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) SafeGet(path string) ([]byte, *zk.Stat, error) {
 	_, err := z.Sync(path)
 	if err != nil {
@@ -313,13 +369,12 @@ func (z *Client) SafeGet(path string) ([]byte, *zk.Stat, error) {
 	return z.Get(path)
 }
 
+// If path is absolute, fullpath leaves it unchanged. Otherwise,
 // fullpath returns the path with the chroot prepended.
 func (z *Client) fullpath(path string) string {
-	//	if z.Cfg.Chroot != "" && !strings.HasPrefix(path, z.Cfg.Chroot) {
-	//    return z.Cfg.Chroot + path
-	//	}
-	//	return path
-
+	if IsAbsolutePath(path) {
+		return path
+	}
 	return z.Cfg.Chroot + path
 }
 
@@ -336,7 +391,7 @@ func DefaultRetry(op, path string, f func() error) {
 
 // A convenience version of Delete, DeleteNode deletes a znode,
 // using version -1 to delete any version.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) DeleteNode(path string) error {
 	return z.Delete(path, -1)
 }
@@ -344,8 +399,49 @@ func (z *Client) DeleteNode(path string) error {
 // A convenience version of Create, CreateNode supplies
 // empty data, 0 flags, and the default z.Cfg.Acl list
 // to a z.Create() call.
-// z.Cfg.Chroot will be prepended to path. The call will be retried.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) CreateNode(path string) error {
 	_, err := z.Create(path, []byte{}, 0, z.Cfg.Acl)
 	return err
+}
+
+// RemoveChroot(path) will detect and
+// automatically remove any chroot prefix, and return a
+// relative path.
+//
+// Examples: "/mybase/myservice/config" -> "myservice/config"
+//           "/myroot/alist" -> "alist"
+//           "/hello/" -> ""
+//           "/poorlyFormed" -> ""  ## properly should have a trailling slash
+//           "relative/path/unchanged" -> "relative/path/unchanged"
+//
+// RemoveChroot will leave untouched any already
+// relative paths. Note that this returned relative path
+// may be the empty string "" if path consists of one element
+// "/chroot/" alone, for example.
+func RemoveChroot(path string) string {
+	if !IsAbsolutePath(path) {
+		return path
+	}
+
+	// find the second '/', but don't freak if its not there.
+	n := strings.Index(path[1:], "/")
+	if n == -1 {
+		// not found
+		return ""
+	}
+	return path[2+n:]
+}
+
+// IsAbsolutePath() checks to see if the path
+// starts with a Chroot element by checking
+// if the first byte is a '/' or not.
+func IsAbsolutePath(path string) bool {
+	if len(path) == 0 {
+		return false
+	}
+	if path[0] == '/' {
+		return true
+	}
+	return false
 }

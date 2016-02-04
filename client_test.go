@@ -1,6 +1,7 @@
 package ezk
 
 import (
+	"fmt"
 	cv "github.com/glycerine/goconvey/convey"
 	zook "github.com/samuel/go-zookeeper/zk"
 	"testing"
@@ -57,4 +58,28 @@ func ExampleClient() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func Test002RemoveChroot(t *testing.T) {
+	cv.Convey("Given an absolute Chrooted path, the RemoveChoot() function should return the relative path without the Chroot prefix", t, func() {
+
+		// map from input to expected output
+		m := map[string]string{
+			"/mybase/myservice/config":     "myservice/config",
+			"/myroot/alist":                "alist",
+			"/hello/":                      "",
+			"/poorlyFormedChrootPrefix":    "",
+			"/properlyFormedChrootPrefix/": "",
+			"relative/path/unchanged":      "relative/path/unchanged",
+			"/":          "",
+			"//":         "",
+			"abc":        "abc",
+			"a/b/c/d/e/": "a/b/c/d/e/",
+		}
+
+		for k, v := range m {
+			fmt.Printf("\n checking '%s' -> '%s'\n", k, v)
+			cv.So(RemoveChroot(k), cv.ShouldEqual, v)
+		}
+	})
 }
