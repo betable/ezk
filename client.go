@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// Client is a wrapper over github.com/samuel/go-zookeeper/zk that retries some operations.
+// Client is a wrapper over github.com/samuel/go-zookeeper/zk that retries all but one of its operations according to the ClientConfig.Retry function. The one exception is for CreateProtectedEphemeralSequential(); it is not retried automatically.
 type Client struct {
 
 	// The configuration for the client.
