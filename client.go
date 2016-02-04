@@ -320,3 +320,19 @@ func DefaultRetry(op, path string, f func() error) {
 		return err == zk.ErrConnectionClosed || err == zk.ErrSessionExpired || err == zk.ErrSessionMoved
 	}).Execute(f)
 }
+
+// A convenience version of Delete, DeleteNode deletes a znode,
+// using version -1 to delete any version.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
+func (z *Client) DeleteNode(path string) error {
+	return z.Delete(path, -1)
+}
+
+// A convenience version of Create, CreateNode supplies
+// empty data, 0 flags, and the default z.Cfg.Acl list
+// to a z.Create() call.
+// z.Cfg.Chroot will be prepended to path. The call will be retried.
+func (z *Client) CreateNode(path string) error {
+	_, err := z.Create(path, []byte{}, 0, z.Cfg.Acl)
+	return err
+}
