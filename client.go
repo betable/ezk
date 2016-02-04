@@ -1,3 +1,10 @@
+/*
+Package ezk is an enhanced Zookeeper client. It uses the
+connection and underlying operations from
+https://github.com/samuel/go-zookeeper/zk
+in conjunction with automatic retry of operations via the
+https://github.com/betable/retry library.
+*/
 package ezk
 
 import (
