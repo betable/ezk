@@ -10,7 +10,8 @@ ClientConfig.Chroot string allows us to distinguish
 between chroot-ed paths and non-chroot paths as follows:
 
  * the Chroot prefix must always start and end with a forward slash.
-   The Chroot prefix always contains exactly two '/'
+   A single "/" alone is a valid Chroot prefix; otherwise
+   the Chroot prefix always contains exactly two '/'
    characters (it can only consist of a single znode).
 
    For example: "/prod/", "/staging/", and "/devtest/" are all
