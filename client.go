@@ -8,6 +8,7 @@ https://github.com/betable/retry library.
 package ezk
 
 import (
+	"fmt"
 	"github.com/betable/retry"
 	"github.com/samuel/go-zookeeper/zk"
 	"time"
@@ -59,12 +60,17 @@ type ClientConfig struct {
 // a default value of 10 seconds will be used.
 // If cfg.Retry is nil then the DefaultRetry
 // function will be used.
+// If cfg.Acl is length 0 then zk.WorldACL(zk.PermAll)
+// will be used.
 func NewClient(cfg ClientConfig) *Client {
 	if cfg.Retry == nil {
 		cfg.Retry = DefaultRetry
 	}
 	if cfg.SessionTimeout == 0 {
 		cfg.SessionTimeout = 10 * time.Second
+	}
+	if len(cfg.Acl) == 0 {
+		cfg.Acl = zk.WorldACL(zk.PermAll)
 	}
 	cli := &Client{
 		Cfg: cfg,
@@ -91,6 +97,10 @@ func (z *Client) Connect() error {
 	}
 	z.Conn = conn
 	z.WatchCh = ch
+
+	// make the Chroot dir; deliberately ignore err as
+	// the Chroot node may already exist.
+	z.Create("", []byte{}, 0, z.Cfg.Acl)
 	return nil
 }
 
@@ -175,6 +185,7 @@ func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, er
 func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("set", path, func() error {
+		fmt.Printf("Set on path='%s'\n", path)
 		s, err = z.Conn.Set(path, data, version)
 		return err
 	})
@@ -265,7 +276,6 @@ func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 // SafeSet is a helper method that writes a znode creating it first if it does not exists. It will sync the Zookeeper before checking if the node exists.
 // z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) (*zk.Stat, error) {
-	path = z.fullpath(path)
 	_, err := z.Sync(path)
 	if err != nil {
 		return nil, err
@@ -291,7 +301,6 @@ func (z *Client) SafeSet(path string, data []byte, version int32, acl []zk.ACL) 
 // SafeGet is a helper method that syncs Zookeeper and return the content of a znode.
 // z.Cfg.Chroot will be prepended to path. The call will be retried.
 func (z *Client) SafeGet(path string) ([]byte, *zk.Stat, error) {
-	path = z.fullpath(path)
 	_, err := z.Sync(path)
 	if err != nil {
 		return nil, nil, err
