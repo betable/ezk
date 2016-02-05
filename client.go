@@ -57,6 +57,7 @@ type Event struct {
 package ezk
 
 import (
+	"fmt"
 	"github.com/betable/retry"
 	"github.com/samuel/go-zookeeper/zk"
 	"strings"
@@ -200,6 +201,7 @@ func (z *Client) Create(path string, data []byte, flags int32, acl []zk.ACL) (s 
 		acl = z.Cfg.Acl
 	}
 	z.Cfg.Retry("create", path, func() error {
+		q("Create on path='%s'\n", path)
 		s, err = z.Conn.Create(path, data, flags, acl)
 		return err
 	})
@@ -222,6 +224,7 @@ func (z *Client) Delete(path string, version int32) (err error) {
 func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("get", path, func() error {
+		q("Get on path='%s'\n", path)
 		d, s, err = z.Conn.Get(path)
 		return err
 	})
@@ -233,6 +236,7 @@ func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
 func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("getw", path, func() error {
+		q("GetW on path='%s'\n", path)
 		d, s, ch, err = z.Conn.GetW(path)
 		return err
 	})
@@ -244,6 +248,7 @@ func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, er
 func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("set", path, func() error {
+		q("Set on path='%s'\n", path)
 		s, err = z.Conn.Set(path, data, version)
 		return err
 	})
@@ -381,10 +386,13 @@ func (z *Client) SafeGet(path string) ([]byte, *zk.Stat, error) {
 // If path is absolute, fullpath leaves it unchanged. Otherwise,
 // fullpath returns the path with the chroot prepended.
 func (z *Client) fullpath(path string) string {
-	if IsAbsolutePath(path) {
-		return path
+	if len(path) == 0 {
+		return ChompSlash(z.Cfg.Chroot)
 	}
-	return z.Cfg.Chroot + path
+	if IsAbsolutePath(path) {
+		return ChompSlash(path)
+	}
+	return ChompSlash(z.Cfg.Chroot + path)
 }
 
 // The DefaultRetry function will retry four times if the
@@ -486,3 +494,12 @@ func ChompSlash(path string) string {
 	}
 	return path
 }
+
+// print with newlines around it; for debug tracing.
+func p(format string, stuff ...interface{}) {
+	fmt.Printf("\n "+format+"\n", stuff...)
+}
+
+// q calls are quietly ignored. They allow conversion from p()
+// calls easily.
+func q(quietly_ignored ...interface{}) {} // quiet
