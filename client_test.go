@@ -23,7 +23,7 @@ func ExampleClient() {
 	newURL := "http://my-new-url.org:343/hello/enhanced-zookeeper-client"
 
 	base := "/chroot/"
-	path := "/service-name/config/server-url-list"
+	path := "service-name/config/server-url-list"
 	zkCfg := ClientConfig{
 		Servers:        []string{"127.0.0.1:2181"},
 		Acl:            zook.WorldACL(zook.PermAll),
