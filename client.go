@@ -5,9 +5,12 @@ https://github.com/samuel/go-zookeeper/zk
 in conjunction with automatic retry of operations via the
 https://github.com/betable/retry library.
 
-Our (enforced) zookeeper path convention for the
-ClientConfig.Chroot string allows us to distinguish
-between chroot-ed paths and non-chroot paths as follows:
+    CHROOT and ABSOLUTE vs RELATIVE paths
+    =====================================
+
+    Our (enforced) zookeeper path convention for the
+    ClientConfig.Chroot string allows us to distinguish
+    between chroot-ed paths and non-chroot paths as follows:
 
     * the Chroot prefix must always start and end with a forward slash.
     A single "/" alone is a valid Chroot prefix; otherwise
