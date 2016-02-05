@@ -45,7 +45,7 @@ https://github.com/betable/retry library.
     not end with a forward slash; they are like relative paths in Unix.
 
     So legal examples of relative paths: "myservice/config/my-servers",
-    "piper", or "timeseries", or "timeseris/config". The
+    "piper", or "timeseries", or "timeseries/config". The
     requirement forbidding the trailing '/' is enforced on the
     Zookeeper server side.
 
