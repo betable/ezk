@@ -57,7 +57,6 @@ type Event struct {
 package ezk
 
 import (
-	"fmt"
 	"github.com/betable/retry"
 	"github.com/samuel/go-zookeeper/zk"
 	"strings"
@@ -245,7 +244,6 @@ func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, er
 func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err error) {
 	path = z.fullpath(path)
 	z.Cfg.Retry("set", path, func() error {
-		fmt.Printf("Set on path='%s'\n", path)
 		s, err = z.Conn.Set(path, data, version)
 		return err
 	})
