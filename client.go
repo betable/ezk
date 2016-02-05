@@ -13,9 +13,14 @@ https://github.com/betable/retry library.
     between chroot-ed paths and non-chroot paths as follows:
 
     * the Chroot prefix must always start with a forward slash.
-    A single "/" alone is a valid Chroot prefix; otherwise
-    the Chroot prefix always contains exactly two '/'
-    characters (it can only consist of at most a single znode).
+    A single '/' alone is a valid Chroot prefix. If the prefix
+    is longer than one character, the Chroot prefix must
+    also end with a '/' as well--in this case the prefix will
+    contain exactly two '/' slash characters; one at the
+    beginning and one at the end.
+
+    A Chroot prefix therefore names either zero or one
+    znodes.
 
     For example: "/prod/", "/staging/", and "/devtest/" are all
     legal Chroot strings. Counter-examples: "/prod" is not
