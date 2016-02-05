@@ -5,12 +5,22 @@ https://github.com/samuel/go-zookeeper/zk
 in conjunction with automatic retry of operations via the
 https://github.com/betable/retry library.
 
-    CHROOT and ABSOLUTE vs RELATIVE paths
-    =====================================
+    ABOUT THE CHROOT PREFIX, ABSOLUTE PATHS, AND RELATIVE PATHS
+    ===========================================================
+
+    Examples of Chroot prefixes commonly used are
+     "/production/", "/staging/", and "/devtest/".
+    These prefixes let one multitask the Zookeeper
+    cluster for different responsibilities without
+    incurring crosstalk between applications.
+
+    The Chroot prefix is implicitly prepended to any
+    relative path supplied to an ezk API call.
 
     Our (enforced) zookeeper path convention for the
     ClientConfig.Chroot string allows us to distinguish
-    between chroot-ed paths and non-chroot paths as follows:
+    between chroot-ed paths and non-chroot paths, and
+    between absolute versus relative paths as follows:
 
     * the Chroot prefix must always start with a forward slash.
     A single '/' alone is a valid Chroot prefix. If the prefix
@@ -47,12 +57,18 @@ https://github.com/betable/retry library.
     relative path. It will leave untouched already relative paths.
 
     * Important: when receiving watch events on channels from the
-    github.com/samuel/go-zookeeper/zk library, they are of type
+    github.com/samuel/go-zookeeper/zk library, they are of the
+    following Event type. See the notes on the Path field below.
 
     type Event struct {
         Type   EventType
         State  State
-        Path   string // For non-session events, the (absolute, Chroot-prefixed) path of the watched node. [1]
+
+        // Path is for non-session events; it is
+        // the (absolute, Chroot-prefixed) path
+        // of the watched node. [1]
+        Path   string
+
         Err    error
         Server string // For connection events
     }
