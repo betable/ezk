@@ -246,7 +246,9 @@ func (z *Client) Delete(path string, version int32) (err error) {
 // Get returns the contents of a znode.
 // z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Get(path string) (d []byte, s *zk.Stat, err error) {
+	q("Get called, path = '%s'", path)
 	path = z.fullpath(path)
+	q("in Get, after fullpath() path = '%s'", path)
 	z.Cfg.Retry("get", path, func() error {
 		q("Get on path='%s'\n", path)
 		d, s, err = z.Conn.Get(path)
@@ -270,7 +272,9 @@ func (z *Client) GetW(path string) (d []byte, s *zk.Stat, ch <-chan zk.Event, er
 // Set writes content in an existent znode.
 // z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
 func (z *Client) Set(path string, data []byte, version int32) (s *zk.Stat, err error) {
+	q("Set called, path = '%s'", path)
 	path = z.fullpath(path)
+	q("in Set, after fullpath() path = '%s'", path)
 	z.Cfg.Retry("set", path, func() error {
 		q("Set on path='%s'\n", path)
 		s, err = z.Conn.Set(path, data, version)

@@ -22,10 +22,8 @@ func Test001ClientRetryGetsDefault(t *testing.T) {
 func ExampleClient() {
 	newURL := "http://my-new-url.org:343/hello/enhanced-zookeeper-client"
 
-	base := "/chroot"
-	nsTest := "/service-name"
-	subdir := "/config"
-	path := nsTest + subdir + "/server-url-list"
+	base := "/chroot/"
+	path := "/service-name/config/server-url-list"
 	zkCfg := ClientConfig{
 		Servers:        []string{"127.0.0.1:2181"},
 		Acl:            zook.WorldACL(zook.PermAll),
@@ -40,9 +38,10 @@ func ExampleClient() {
 
 	defer zk.Close()
 
-	zk.CreateNode(nsTest)
-	zk.CreateNode(nsTest + subdir)
-	zk.CreateNode(path)
+	err = zk.CreateDir(path, nil)
+	if err != nil {
+		panic(err)
+	}
 
 	err = zk.DeleteNode(path) // delete any old value
 	if err != nil {
