@@ -9,49 +9,49 @@ Our (enforced) zookeeper path convention for the
 ClientConfig.Chroot string allows us to distinguish
 between chroot-ed paths and non-chroot paths as follows:
 
- * the Chroot prefix must always start and end with a forward slash.
-   A single "/" alone is a valid Chroot prefix; otherwise
-   the Chroot prefix always contains exactly two '/'
-   characters (it can only consist of a single znode).
+    * the Chroot prefix must always start and end with a forward slash.
+    A single "/" alone is a valid Chroot prefix; otherwise
+    the Chroot prefix always contains exactly two '/'
+    characters (it can only consist of a single znode).
 
-   For example: "/prod/", "/staging/", and "/devtest/" are all
-   legal Chroot strings. Counter-examples: "/prod" is not
-   a legal Chroot value, nor is "prod/", nor is "prod".
-   User code can distinguish Chroot prefixes by checking
-   whether the first byte of the string is '/' or not.
-   See the IsAbsolutePath() and RemoveChroot()
-   helper functions.
+    For example: "/prod/", "/staging/", and "/devtest/" are all
+    legal Chroot strings. Counter-examples: "/prod" is not
+    a legal Chroot value, nor is "prod/", nor is "prod".
+    User code can distinguish Chroot prefixes by checking
+    whether the first byte of the string is '/' or not.
+    See the IsAbsolutePath() and RemoveChroot()
+    helper functions.
 
-* All paths that are intended to be relative to the Chroot
-  prefix must *not* start with a forward slash and must
-  not end with a forward slash; they are like relative paths in Unix.
+    * All paths that are intended to be relative to the Chroot
+    prefix must *not* start with a forward slash and must
+    not end with a forward slash; they are like relative paths in Unix.
 
-  So legal examples of relative paths: "myservice/config/my-servers",
-  "piper", or "timeseries", or "timeseris/config". The
-  requirement forbidding the trailing '/' is enforced on the
-  Zookeeper server side.
+    So legal examples of relative paths: "myservice/config/my-servers",
+    "piper", or "timeseries", or "timeseris/config". The
+    requirement forbidding the trailing '/' is enforced on the
+    Zookeeper server side.
 
-* The ezk library will form the full path (spoken on the wire to
-  the Zookeeper) by a simple concatenation of Chroot + relative path.
+    * The ezk library will form the full path (spoken on the wire to
+    the Zookeeper) by a simple concatenation of Chroot + relative path.
 
-* The helper function RemoveChroot(path) will detect and
-  automatically remove any chroot prefix from path, and returns a
-  relative path. It will leave untouched already relative paths.
+    * The helper function RemoveChroot(path) will detect and
+    automatically remove any chroot prefix from path, and returns a
+    relative path. It will leave untouched already relative paths.
 
-* Important: when receiving watch events on channels from the
-  github.com/samuel/go-zookeeper/zk library, they are of type
+    * Important: when receiving watch events on channels from the
+    github.com/samuel/go-zookeeper/zk library, they are of type
 
-type Event struct {
-	Type   EventType
-	State  State
-	Path   string // For non-session events, the (absolute, Chroot-prefixed) path of the watched node. [1]
-	Err    error
-	Server string // For connection events
-}
+    type Event struct {
+        Type   EventType
+        State  State
+        Path   string // For non-session events, the (absolute, Chroot-prefixed) path of the watched node. [1]
+        Err    error
+        Server string // For connection events
+    }
 
-  Note [1] that this Path is absolute, it includes the Chroot
-  prefix. Users should call RemoveChroot() function as needed
-  before using the Event.Path field.
+    Note [1] that this Path is absolute, it includes the Chroot
+    prefix. Users should call RemoveChroot() function as needed
+    before using the Event.Path field.
 
 */
 package ezk
