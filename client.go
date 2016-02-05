@@ -407,6 +407,29 @@ func (z *Client) DeleteNode(path string) error {
 	return z.Delete(path, -1)
 }
 
+// A convenience version of Delete, DeleteNodeRecursively deletes a znode
+// and any of its children, using version -1 to delete any version.
+// z.Cfg.Chroot will be prepended to a relative path. The call will be retried.
+func (z *Client) DeleteNodeRecursively(path string) error {
+
+	// find children and delete then
+	chldList, _, err := z.Children(path)
+	switch err {
+	case nil:
+	case zk.ErrNoNode:
+		// no children, ignore
+	default:
+		return err
+	}
+	for _, chld := range chldList {
+		err = z.DeleteNodeRecursively(path + "/" + chld)
+		if err != nil {
+			return err
+		}
+	}
+	return z.Delete(path, -1)
+}
+
 // A convenience version of Create, CreateNode supplies
 // empty data, 0 flags, and the default z.Cfg.Acl list
 // to a z.Create() call.
