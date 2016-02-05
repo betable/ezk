@@ -12,10 +12,10 @@ https://github.com/betable/retry library.
     ClientConfig.Chroot string allows us to distinguish
     between chroot-ed paths and non-chroot paths as follows:
 
-    * the Chroot prefix must always start and end with a forward slash.
+    * the Chroot prefix must always start with a forward slash.
     A single "/" alone is a valid Chroot prefix; otherwise
     the Chroot prefix always contains exactly two '/'
-    characters (it can only consist of a single znode).
+    characters (it can only consist of at most a single znode).
 
     For example: "/prod/", "/staging/", and "/devtest/" are all
     legal Chroot strings. Counter-examples: "/prod" is not
@@ -54,8 +54,8 @@ https://github.com/betable/retry library.
 
     Note [1] that this Path is absolute, it includes the Chroot
     prefix. Users should call RemoveChroot() function as needed
-    before using the Event.Path field.
-
+    before using the Event.Path field if they require a relative
+    path.
 */
 package ezk
 
