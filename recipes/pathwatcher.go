@@ -48,8 +48,8 @@ func NewPathWatcher(client *ezk.Client, path string) *PathWatcher {
 	return &PathWatcher{
 		Path:   path,
 		client: client,
-		event:  make(chan zk.Event, 1),
-		err:    make(chan error, 1),
+		event:  make(chan zk.Event),
+		err:    make(chan error),
 		stop:   make(chan struct{}),
 		done:   make(chan struct{}),
 	}
