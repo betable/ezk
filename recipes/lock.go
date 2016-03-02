@@ -44,14 +44,23 @@ func (l *Lock) Lock() error {
 
 	// Fight and wait until it's free
 	for {
-		err = sequentialFight(l.client, l.Path, seq)
+		lockFile, err := sequentialFight(l.client, l.Path, seq)
 		switch err {
 		case nil:
 			// lock acquired
 			return nil
 		case ErrLockFound:
-			// lock ackquired by other user
-			// continue waiting
+			// Lock acquired by another user.
+			// Create a exist watcher on the file that holds the lock so we
+			// can wait until it gets deleted and then we fight again.
+			ok, _, ch, err := l.client.ExistsW(lockFile)
+			if err != nil {
+				l.Unlock()
+				return err
+			}
+			if ok {
+				<-ch
+			}
 			continue
 		default:
 			// error reading the locks

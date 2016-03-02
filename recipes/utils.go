@@ -23,6 +23,16 @@ func unixMilli() int64 {
 	return time.Now().UnixNano() / 1e6
 }
 
+// createSequentialLock creates a new lock and returns the full path of the lock.
+func createSequentialLock(client *ezk.Client, base string, acl []zk.ACL) (string, error) {
+	lockPath := fmt.Sprintf("%s/lock.", base)
+
+	// Create lock attempt /base/_c_67c79fecc6104a7026bdd7c3ce773828-lock.0000000001
+	return client.CreateProtectedEphemeralSequential(lockPath, nil, acl)
+}
+
+// sequentialLockFight creates a new lock and does a sequentialFight.
+// It returns the new lock and the result of the sequential fight.
 func sequentialLockFight(client *ezk.Client, base string, acl []zk.ACL) (string, error) {
 	// Create lock
 	lock, err := createSequentialLock(client, base, acl)
@@ -37,26 +47,23 @@ func sequentialLockFight(client *ezk.Client, base string, acl []zk.ACL) (string,
 	}
 
 	// Fight and return result
-	err = sequentialFight(client, base, seq)
+	_, err = sequentialFight(client, base, seq)
 
 	return lock, err
 }
 
-func createSequentialLock(client *ezk.Client, base string, acl []zk.ACL) (string, error) {
-	lockPath := fmt.Sprintf("%s/lock.", base)
-
-	// Create lock attempt /base/_c_67c79fecc6104a7026bdd7c3ce773828-lock.0000000001
-	return client.CreateProtectedEphemeralSequential(lockPath, nil, acl)
-}
-
-func sequentialFight(client *ezk.Client, base string, seq int) error {
+// sequentialFight returns the path to the lock with the lowest sequence number.
+// If that file is the same the one passed it returns nil meaning that that sequence
+// number has win the fight, if not it will return ErrLockFound.
+func sequentialFight(client *ezk.Client, base string, seq int) (string, error) {
 	// Read all the childrens
 	children, _, err := client.Children(base)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Look for the lowest sequence number
+	var lowestNode string
 	lowestSeq := seq
 	for _, p := range children {
 		s, err := parseSeq(p)
@@ -64,18 +71,23 @@ func sequentialFight(client *ezk.Client, base string, seq int) error {
 		if err == nil {
 			if s < lowestSeq {
 				lowestSeq = s
+				lowestNode = p
 			}
 		}
 	}
 
+	// Add the base path
+	lowestNode = join(base, lowestNode)
+
 	// Acquire the lock
 	if seq == lowestSeq {
-		return nil
+		return lowestNode, nil
 	}
 
-	return ErrLockFound
+	return lowestNode, ErrLockFound
 }
 
+// timeBasedCleaner deletes those znodes in the base path older than t.
 func timeBasedCleaner(client *ezk.Client, base string, t time.Duration) error {
 	now := unixMilli()
 
