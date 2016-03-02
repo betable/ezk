@@ -9,6 +9,7 @@ import (
 
 type Lock struct {
 	Path   string
+	MaxAge time.Duration
 	client *ezk.Client
 	acl    []zk.ACL
 	lock   string
@@ -23,10 +24,29 @@ func NewLock(client *ezk.Client, path string, acl []zk.ACL) *Lock {
 	}
 }
 
+// WithCleaner adds a cleaner to the lock, this will remove all the files
+// in the Lock.Path older than t.
+func (l *Lock) WithCleaner(t time.Duration) {
+	l.MaxAge = t
+}
+
+// clean removes locks older than MaxAge if Lock.MaxAge is defined.
+func (l *Lock) clean() error {
+	if l.MaxAge > 0 {
+		return timeBasedCleaner(l.client, l.Path, l.MaxAge)
+	}
+	return nil
+}
+
 // Lock implements a distributed lock on zookeeper where only one instance will
-// be able to process while the rest of them will wait.
+// be able to proceed while the rest of them will wait.
 func (l *Lock) Lock() error {
 	var err error
+
+	// Clean older locks if necessary
+	if err = l.clean(); err != nil {
+		return err
+	}
 
 	// Create lock
 	l.lock, err = createSequentialLock(l.client, l.Path, l.acl)
@@ -68,18 +88,6 @@ func (l *Lock) Lock() error {
 			return err
 		}
 	}
-
-}
-
-// LockWithCleaner implements a distributed lock but before locking it will
-// clean the locks older than t.
-func (l *Lock) LockWithCleaner(t time.Duration) error {
-	// Clean old locks
-	if err := timeBasedCleaner(l.client, l.Path, t); err != nil {
-		return err
-	}
-	// Lock
-	return l.Lock()
 }
 
 // TryLock will attempt to acquire the lock only if it is free at the time of invocation.
@@ -87,6 +95,12 @@ func (l *Lock) LockWithCleaner(t time.Duration) error {
 // unless any other error is found.
 func (l *Lock) TryLock() error {
 	var err error
+
+	// Clean older locks if necessary
+	if err = l.clean(); err != nil {
+		return err
+	}
+
 	// Create lock and fight
 	l.lock, err = sequentialLockFight(l.client, l.Path, l.acl)
 	if err != nil {
@@ -94,17 +108,6 @@ func (l *Lock) TryLock() error {
 		return err
 	}
 	return nil
-}
-
-// LockWithCleaner implements a distributed TryLock but before locking it will
-// clean the locks older than t.
-func (l *Lock) TryLockWithCleaner(t time.Duration) error {
-	// Clean old locks
-	if err := timeBasedCleaner(l.client, l.Path, t); err != nil {
-		return err
-	}
-	// TryLock
-	return l.TryLock()
 }
 
 // Unlock removes the current lock znode.
