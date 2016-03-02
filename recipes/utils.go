@@ -105,7 +105,7 @@ func timeBasedCleaner(client *ezk.Client, base string, t time.Duration) error {
 		if err != nil {
 			return err
 		}
-		println(ok, stat.Ctime, seconds, now, stat.Ctime+seconds < now)
+
 		// Delete locks older than SchedulerLockTime
 		if ok && stat.Ctime+seconds < now {
 			if err := client.Delete(node, stat.Version); err != nil && err != zk.ErrNoNode {
