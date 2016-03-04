@@ -30,8 +30,13 @@ func (l *Lock) WithCleaner(t time.Duration) {
 	l.MaxAge = t
 }
 
-// clean removes locks older than MaxAge if Lock.MaxAge is defined.
-func (l *Lock) clean() error {
+// initialize creates the base node if necessary and removes locks older than
+// MaxAge if Lock.MaxAge is defined.
+func (l *Lock) initialize() error {
+	if err := l.client.CreateDir(l.Path, l.acl); err != nil {
+		return err
+	}
+
 	if l.MaxAge > 0 {
 		return timeBasedCleaner(l.client, l.Path, l.MaxAge)
 	}
@@ -44,7 +49,7 @@ func (l *Lock) Lock() error {
 	var err error
 
 	// Clean older locks if necessary
-	if err = l.clean(); err != nil {
+	if err = l.initialize(); err != nil {
 		return err
 	}
 
@@ -97,7 +102,7 @@ func (l *Lock) TryLock() error {
 	var err error
 
 	// Clean older locks if necessary
-	if err = l.clean(); err != nil {
+	if err = l.initialize(); err != nil {
 		return err
 	}
 

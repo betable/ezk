@@ -19,10 +19,6 @@ var acl = zk.WorldACL(zk.PermAll)
 func TestLock(t *testing.T) {
 	defer testClient.DeleteNodeRecursively("testlock")
 
-	if err := testClient.CreateDir("testlock", acl); err != nil {
-		t.Fatal(err)
-	}
-
 	l1 := NewLock(testClient, "testlock", acl)
 	l2 := NewLock(testClient, "testlock", acl)
 
@@ -72,10 +68,6 @@ func TestLock(t *testing.T) {
 func TestLockWithCleaner(t *testing.T) {
 	defer testClient.DeleteNodeRecursively("testlock")
 
-	if err := testClient.CreateDir("testlock", acl); err != nil {
-		t.Fatal(err)
-	}
-
 	l1 := NewLock(testClient, "testlock", acl)
 	l2 := NewLock(testClient, "testlock", acl)
 	l2.WithCleaner(100 * time.Millisecond)
@@ -114,10 +106,6 @@ func TestLockWithCleaner(t *testing.T) {
 func TestTryLock(t *testing.T) {
 	defer testClient.DeleteNodeRecursively("testlock")
 
-	if err := testClient.CreateDir("testlock", acl); err != nil {
-		t.Fatal(err)
-	}
-
 	l1 := NewLock(testClient, "testlock", acl)
 	l2 := NewLock(testClient, "testlock", acl)
 
@@ -154,10 +142,6 @@ func TestTryLock(t *testing.T) {
 
 func TestTryLockWithCleaner(t *testing.T) {
 	defer testClient.DeleteNodeRecursively("testlock")
-
-	if err := testClient.CreateDir("testlock", acl); err != nil {
-		t.Fatal(err)
-	}
 
 	l1 := NewLock(testClient, "testlock", acl)
 	l2 := NewLock(testClient, "testlock", acl)
