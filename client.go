@@ -82,10 +82,11 @@ package ezk
 
 import (
 	"fmt"
-	"github.com/betable/retry"
-	"github.com/samuel/go-zookeeper/zk"
 	"strings"
 	"time"
+
+	"github.com/betable/retry"
+	"github.com/samuel/go-zookeeper/zk"
 )
 
 // Client is a wrapper over github.com/samuel/go-zookeeper/zk that retries all but one of its operations according to the ClientConfig.Retry function. The one exception is for CreateProtectedEphemeralSequential(); it is not retried automatically.
@@ -184,7 +185,7 @@ func (z *Client) Connect() error {
 
 	// make the Chroot dir; deliberately ignore err as
 	// the Chroot node may already exist.
-	z.Create("", []byte{}, 0, z.Cfg.Acl)
+	z.CreateDir("", z.Cfg.Acl)
 	return nil
 }
 
@@ -353,26 +354,45 @@ func (z *Client) CreateProtectedEphemeralSequential(path string, data []byte, ac
 // relative path. The call will be retried.
 func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 	path = z.fullpath(path)
+
+	// Fast path, just return if it exists
 	if path == "" || path == "/" {
 		return nil
 	}
 
-	next := ""
-	elem := strings.Split(ChompSlash(path[1:]), "/")
+	if ok, _, _ := z.Exists(path); ok {
+		return nil
+	}
+
+	// Slow path: masure parent exists and then call Create for path
+	var err error
+
 	if len(acl) == 0 {
 		acl = z.Cfg.Acl
 	}
-	var err error
-	for _, e := range elem {
-		next += "/" + e
-		_, err = z.Create(next, []byte{}, 0, acl)
-		if err == zk.ErrNodeExists || err == nil {
-			continue
-		} else {
+
+	i := len(path)
+	// Skip trailing path separator
+	for i > 0 && path[i-1] == '/' {
+		i--
+	}
+
+	j := i
+	// Scan backward over element
+	for j > 0 && path[j-1] != '/' {
+		j--
+	}
+
+	if j > 1 {
+		// Create parent
+		if err = z.CreateDir(path[0:j-1], acl); err != nil {
 			return err
 		}
 	}
-	return nil
+
+	// Parent now exists; invoke Create and use its result
+	_, err = z.Create(path, []byte{}, 0, acl)
+	return err
 }
 
 // SafeSet is a helper method that writes a znode creating it first if it does not exists. It will sync the Zookeeper before checking if the node exists.
