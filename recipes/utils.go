@@ -98,7 +98,7 @@ func timeBasedCleaner(client *ezk.Client, base string, t time.Duration) error {
 	}
 
 	// Iterate to all the childrents reading the creation time
-	seconds := int64(t / time.Second)
+	millis := int64(t / time.Millisecond)
 	for i := range children {
 		node := join(base, children[i])
 		ok, stat, err := client.Exists(node)
@@ -107,7 +107,7 @@ func timeBasedCleaner(client *ezk.Client, base string, t time.Duration) error {
 		}
 
 		// Delete locks older than SchedulerLockTime
-		if ok && stat.Ctime+seconds < now {
+		if ok && stat.Ctime+millis < now {
 			if err := client.Delete(node, stat.Version); err != nil && err != zk.ErrNoNode {
 				return err
 			}
