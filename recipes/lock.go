@@ -26,6 +26,12 @@ func NewLock(client *ezk.Client, path string, acl []zk.ACL) *Lock {
 
 // WithCleaner adds a cleaner to the lock, this will remove all the files
 // in the Lock.Path older than t.
+//
+// WithCleaner is used to support special cases where we want to execute
+// the code protected by one path twice when the user holding the lock
+// does not unlock it in less than t. The initial user holding the lock
+// will know that his lock was removed because the Unlock will return the
+// zk.ErrNoNode error.
 func (l *Lock) WithCleaner(t time.Duration) {
 	l.MaxAge = t
 }
