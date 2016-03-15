@@ -392,6 +392,10 @@ func (z *Client) CreateDir(path string, acl []zk.ACL) error {
 
 	// Parent now exists; invoke Create and use its result
 	_, err = z.Create(path, []byte{}, 0, acl)
+	if err == zk.ErrNodeExists {
+		return nil
+	}
+
 	return err
 }
 
