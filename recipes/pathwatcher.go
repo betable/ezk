@@ -25,7 +25,7 @@ import (
 // 					// do something
 // 				}
 //
-// 				case err := <-monitorWatcher.Error():
+// 				case err := <-watcher.Error():
 // 					// do something
 // 			}
 // 		}
